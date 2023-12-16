@@ -1,168 +1,198 @@
-﻿using System.Collections.Generic;
-using System.Diagnostics;
-using System.Threading;
-using System.Xml.Linq;
+﻿using System.Collections.Concurrent;
+using Lab2_Threads.Models;
 
 namespace Lab2_Threads
 {
     internal class Program
     {
+        //vid stopDuration hastighet är 0!
 
         // 10+ är 10 men även texten ska ändras att den är i mål (inte hastigheten)
         // avslutstext när alla klara. avbryter jag tidsräknaren? 
         // cancellation tokens då? ska man även använda dem för att bilar ska avsluta efter 10km?
-        // hit a human -> withdraw from race => if one car left end the race(? or continue but say sth)
 
 
-        // här måste jag städa när jag testat klart
-        static int seconds = 1; // tiden tävlingen har pågått
-        static int obstacleCount = 0;
-        static ThreadLocal<int> localSeconds = new ThreadLocal<int>(true); // local seconds för kontroll
-        static ThreadLocal<int> stopDuration = new ThreadLocal<int>(true); // sekunder
-        static ThreadLocal<decimal> distance = new ThreadLocal<decimal>(true); // kilometer
-        static bool finito = false; // bool if any car reached the goal.
-                                    // skulle kunna kolla int och räkna antal bilar som är i mål..
-                                    // men då måste jag dela antalet bilar eller listan med Race :/
-        static List<string> obstaclesEncountered = new List<string>(); //annars skrevs det om varje gång
-        // men det här delas av alla bilar så det blir kaos
-        Object lockObject=new Object();
-        // jag tror att Obstacle behöver få eget tråd? nää
+        static int seconds = 1; // the universial time of the race
+        static int carNumber = 0;
+        public static int totalDistance = 0;
+        static ThreadLocal<int> localSeconds = new ThreadLocal<int>(true); // local seconds for each car
+        static ThreadLocal<int> stopDuration = new ThreadLocal<int>(true); // seconds
+        static ThreadLocal<int> stopDurationHelper = new ThreadLocal<int>(true); // locally in Obstacle
+        static ThreadLocal<int> randomNumber = new ThreadLocal<int>(true);
+        static ThreadLocal<int> eventsCount = new ThreadLocal<int>(true); // events = obstacles, getting to the goal
+        static ThreadLocal<string> obstacle = new ThreadLocal<string>(true);
+        static ThreadLocal<bool> finito = new ThreadLocal<bool>(true);
+        static Object lockObject1 = new Object();
+        static Object lockObject2 = new Object();
+        static Object lockObject3 = new Object();
 
         static void Main(string[] args)
         {
+            CancellationTokenSource tokenSource = new CancellationTokenSource();
+            CancellationToken token = tokenSource.Token;
 
+            totalDistance = 10;
 
+            // create cars
             List<Car> carList = CreateCars();
+            carNumber = carList.Count;
 
-            // create and start threads
+            // create and start car-threads
             List<Thread> carThreads = new List<Thread>();
-            foreach (Car car in carList)
-            {
-                carThreads.Add(new Thread(() => Race(car, 10)));
+            foreach (Car car in carList) carThreads.Add(new Thread(() => Race(car, totalDistance)));
+            foreach (Thread thread in carThreads) thread.Start();
 
-            }
-            foreach (Thread thread in carThreads)
-            {
-                thread.Start();
-            }
-
-            Thread threadT = new Thread(CountTime);
+            // universal time counter
+            Thread threadT = new Thread(() => CountTime(token));
             threadT.Start();
 
-            Thread threadU = new Thread(() => GetRaceUpdate(carList));
+            // getting updates by pressing Enter
+            Thread threadU = new Thread(() => GetRaceUpdate(carList, token));
             threadU.Start();
 
-            foreach (Thread thread in carThreads)
-            {
-                thread.Join();
-            }
+            // when all cars are done it's time to finish the race 
+            foreach (Thread thread in carThreads) thread.Join();
+            tokenSource.Cancel();
 
-            //threadT.Abort();//byt till cancelation token sen
+        }
+        static void Print(int row, string[] msgs)
+        {
+            lock (lockObject1)
+            {
+                Console.SetCursorPosition(0, row);
+                foreach (string msg in msgs) Console.WriteLine(msg);
+            }
         }
 
-        static void CountTime() // räknar tävlingens tid i sekunder 
+        static void CountTime(CancellationToken token) // räknar tävlingens tid i sekunder 
         {
-            Console.Clear();
             Console.CursorVisible = false;
 
-            Console.SetCursorPosition(0, 0);
-            Console.WriteLine("Tryck Enter om du vill veta hur det går i tävlingen! ");
-
-            while (true)
+            string[] x = new string[1];
+            x[0] = "Tryck Enter om du vill veta hur det går i tävlingen! ";
+            Print(0, x);
+            while (!token.IsCancellationRequested)
             {
-                Console.SetCursorPosition(0, 1);
-                Console.WriteLine($"Tävlingen har nu pågått {seconds:###0} sekunder");
+
+                x[0] = $"Tävlingen har nu pågått {seconds:###0} sekunder";
+                Print(1, x);
                 Thread.Sleep(1000);
                 seconds++;
+
             }
+            Print(0, new string[] { $"Tävlingen är klar efter {seconds:###0} sekunder                               " });
+            Print(1, new string[] { "                                                                              " });
         }
 
         static void Race(Car car, int totalDistance) // utför tävlingen 
         {
-            Console.SetCursorPosition(0, 3);
-            Console.WriteLine($"Jag kör igång!! brrruumm brrrum brum /{car.Name}");
+            Console.Clear();
 
             localSeconds.Value = 1;
-            int stopDuration = 0;
+            stopDuration.Value = 0;
             while (true)
             {
-                if (localSeconds.Value != seconds) continue;
-                if (seconds % 30 == 0)
+                if (localSeconds.Value % 30 == 0)
                 {
-                    stopDuration = Obstacle(car);
+                    stopDuration.Value = Obstacle(car);
                 }
 
-                if (stopDuration == 0)
+                if (stopDuration.Value == 0)
                 {
                     car.Distance += car.SpeedPerH / 3600m;
-                }
-
-                if (car.Distance >= totalDistance)
-                {
-                    if (finito == false)
+                    if (car.Distance >= totalDistance)
                     {
-                        Console.WriteLine($"{car.Name} är först i mål!!!!");
-                        finito = true;
-                    }
-                    else Console.WriteLine($"{car.Name} har kommit i mål!");
-                    break;
-                }
-                stopDuration = stopDuration > 0 ? stopDuration-- : stopDuration;
-                localSeconds.Value++;
+                        lock (lockObject3)
+                        {
+                            string[] x = new string[1];
+                            if (finito.Values.All(x => x == false))
+                            {
+                                Print(4 + carNumber + eventsCount.Values.Sum(), new string[] { $"{car.Name} är först i mål!!!!                                                          " });
+                            }
+                            else
+                            {
+                                Print(4 + carNumber + eventsCount.Values.Sum(), new string[] { $"{car.Name} har kommit i mål!                                                           " });
+                            }
+                            eventsCount.Value++;
+                        }
+                        finito.Value = true;
 
+                        break;
+                    }
+                }
+                else
+                {
+                    stopDuration.Value--;
+                }
+
+                Thread.Sleep(1000);
+                localSeconds.Value++;
             }
         }
         static int Obstacle(Car car) // returnerar tid som bilen inte kan röra sig 
         {
-            int stopDuration = 0;
+            stopDurationHelper.Value = 0;
+            obstacle.Value = "";
 
             Random r = new Random();
-            int radomNumber = r.Next(0, 50);
+            randomNumber.Value = r.Next(0, 50);
 
-            if (radomNumber < 1)
+            lock (lockObject2)
             {
-                obstaclesEncountered.Add($"[{seconds}sek av tävlingen] {car.Name} har slut på bensin. Tankar 30sek.");
-                stopDuration = 30;
-            }
-            else if (radomNumber < 3)
-            {
-                obstaclesEncountered.Add($"[{seconds}sek av tävlingen] Fck it! {car.Name} fick punka. Däckbyte 20sek.");
-                stopDuration = 20;
-            }
-            else if (radomNumber < 8)
-            {
-                obstaclesEncountered.Add($"[{seconds}sek av tävlingen] {car.Name} HAR FÅGEL!!! Tvättar vindrutan i 10sek.");
-                stopDuration = 10;
-            }
-            else if (radomNumber < 18)
-            {
-                car.SpeedPerH -= 1;
-                obstaclesEncountered.Add($"[{seconds}sek av tävlingen] {car.Name} fick motorfel :( Får sakta ner lite..");
-            }
+                if (randomNumber.Value < 1)
+                {
+                    obstacle.Value = $"[{localSeconds.Value}sek av tävlingen] {car.Name} har slut på bensin. Tankar 30sek.";
+                    eventsCount.Value++;
+                    stopDurationHelper.Value = 30;
+                }
+                else if (randomNumber.Value < 3)
+                {
+                    obstacle.Value = $"[{localSeconds.Value}sek av tävlingen] Fck it! {car.Name} fick punka. Däckbyte 20sek.";
+                    eventsCount.Value++;
+                    stopDurationHelper.Value = 20;
+                }
+                else if (randomNumber.Value < 8)
+                {
+                    obstacle.Value = $"[{localSeconds.Value}sek av tävlingen] {car.Name} HAR FÅGEL!!! Tvättar vindrutan i 10sek.";
+                    eventsCount.Value++;
+                    stopDurationHelper.Value = 10;
+                }
+                else if (randomNumber.Value < 18)
+                {
+                    car.SpeedPerH -= 1;
+                    obstacle.Value = $"[{localSeconds.Value}sek av tävlingen] {car.Name} fick motorfel :( Får sakta ner lite..";
+                    eventsCount.Value++;
+                }
 
-            Console.SetCursorPosition(0, 8);
-            foreach (string obstacle in obstaclesEncountered)
-            {
-                Console.WriteLine(obstacle);
-            }
+                if (obstacle.Value != "")
+                {
 
-            return stopDuration;
+                    Print(4 + carNumber + eventsCount.Values.Sum(), new string[] { obstacle.Value });
+
+                }
+            }
+            return stopDurationHelper.Value;
         }
 
-        static void GetRaceUpdate(List<Car> carList)
+        static void GetRaceUpdate(List<Car> carList, CancellationToken token)
         {
             while (true)
             {
                 ConsoleKeyInfo keyInfo = Console.ReadKey();
                 if (keyInfo.Key == ConsoleKey.Enter)
                 {
-                    Console.SetCursorPosition(0, 3);
-                    Console.WriteLine($"Det här är sååå schpännande!! Sekund {seconds} av tävlingen: ");
+
+                    string[] x = new string[carList.Count + 1];
+                    x[0] = $"Det här är sååå schpännande!! Sekund {seconds} av tävlingen: ";
+                    int carCount = 1;
                     foreach (Car car in carList)
                     {
-                        if (car.Distance == 10) Console.WriteLine($"* {car.Name} är i mål");
-                        else Console.WriteLine($"* {car.Name} kämpar på med hastighet {car.SpeedPerH} km/h, har nu kommit {car.Distance:#0.#0}km på vägen");// hur skriver jag ut per bil?
+                        if (car.Distance == 10) x[carCount] = $"* {car.Name} är i mål                           ";
+                        else x[carCount] = $"* {car.Name} kämpar på med hastighet {car.SpeedPerH} km/h, har nu kommit {car.Distance:#0.#0}km på vägen";
+                        carCount++;
                     }
+                    Print(3, x);
+                    
                 }
             }
         }
@@ -195,30 +225,5 @@ namespace Lab2_Threads
             return carList;
         }
     }
-    internal class Car
-    {
-        public string Name { get; set; }
-        public int SpeedPerH { get; set; }
 
-        private decimal distance;
-        public decimal Distance
-        {
-            get
-            {
-                return distance;
-            }
-            set
-            {
-                if (value > 10) distance = 10;
-                else distance = value;
-            }
-        }// hmm osäker om det verkligen ska vara en property...
-
-        public Car(string name)
-        {
-            Name = name;
-            SpeedPerH = 120;
-            Distance = 0;
-        }
-    }
 }
