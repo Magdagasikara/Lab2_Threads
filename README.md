@@ -12,8 +12,3 @@ Unsolved issues:
 
 Could have been added (if I didn't find with seconds):
 - Another "obstacle": hit a human -> withdraw from race => if one car left end the race(or continue but say sth)
-
-What i still try to fix:
-- sometimes when two events happen at the same time not both of them will be printed
-- doublecheck so that size of the new text is at least as long as the previous one in the same place
-- move out some of the methods from Program

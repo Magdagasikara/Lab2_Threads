@@ -1,13 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Lab2_Threads;
+﻿using Lab2_Threads.Functions;
 
 namespace Lab2_Threads.Models
 {
-    internal class Car
+    public class Car
     {
         public string Name { get; set; }
         public int SpeedPerH { get; set; }
