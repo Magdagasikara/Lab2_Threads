@@ -5,7 +5,7 @@ namespace Lab2_Threads.Functions
 
     public static class Helpers
     {
-        public static int seconds = 1; // the universial time of the race
+        public static int seconds = 0; // the universal time of the race
         static Object lockObject1 = new Object();
 
         public static void Print(int row, string[] msgs)
@@ -36,9 +36,9 @@ namespace Lab2_Threads.Functions
                 string input = Console.ReadLine();
                 if (input == "") input = "En random bil som du inte har kontroll över";
                 string name = input;
-                foreach (Car car in carList) // simple check if the name already exists
+                while (carList.Any(x => x.Name == name)) // simple check if the name already exists
                 {
-                    if (car.Name == input) name = $"{input}_2";
+                    name = $"{name}_2";
                 }
                 carList.Add(new Car(name));
             }
@@ -70,14 +70,14 @@ namespace Lab2_Threads.Functions
 
         public static void CountTime(CancellationToken token) // the general timing of the race
         {
-            Console.CursorVisible = false;
+            Console.Clear();
 
             string[] x = new string[1];
             x[0] = "Tryck Enter om du vill veta hur det går i tävlingen! ";
             Print(0, x);
             while (!token.IsCancellationRequested)
             {
-
+                Console.CursorVisible = false; // this setting should be on even if you maximize the console window
                 x[0] = $"Tävlingen har nu pågått {seconds:###0} sekunder";
                 Print(1, x);
                 Thread.Sleep(1000);
@@ -87,6 +87,5 @@ namespace Lab2_Threads.Functions
             Print(0, new string[] { $"Tävlingen är klar efter {seconds:###0} sekunder                               " });
             Print(1, new string[] { "                                                                              " });
         }
-
     }
 }

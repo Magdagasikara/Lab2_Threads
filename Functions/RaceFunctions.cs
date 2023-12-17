@@ -6,7 +6,7 @@ namespace Lab2_Threads.Functions
     public static class RaceFunctions
     {
         public static ThreadLocal<int> localSeconds = new ThreadLocal<int>(true); // time lapse for each car, in seconds
-        public static ThreadLocal<int> stopDuration = new ThreadLocal<int>(true); // seconds
+        public static ThreadLocal<int> stopDuration = new ThreadLocal<int>(true); // in seconds
         public static ThreadLocal<int> stopDurationHelper = new ThreadLocal<int>(true); // locally in Obstacle
         public static ThreadLocal<int> randomNumber = new ThreadLocal<int>(true);
         public static ThreadLocal<int> eventsCount = new ThreadLocal<int>(true); // events = car starts, obstacles, getting to the goal
@@ -15,14 +15,9 @@ namespace Lab2_Threads.Functions
 
         static Object lockObject1 = new Object();
         static Object lockObject2 = new Object();
-        static Object lockObject3 = new Object();
 
         public static void Race(Car car, int totalDistance) // let's race!
         {
-            Console.Clear();
-
-            localSeconds.Value = 1;
-            stopDuration.Value = 0;
 
             // each car announces when it starts the race
             lock (lockObject1)
@@ -34,18 +29,19 @@ namespace Lab2_Threads.Functions
             // during the race cars can encounter obstacles that make them miss part of the race
             while (true)
             {
-                if (localSeconds.Value % 30 == 0)
+                lock (lockObject2) // needed to lock the whole so that printing of obstacles and other events does not collide
                 {
-                    stopDuration.Value = Obstacle(car);
-                }
-
-                if (stopDuration.Value == 0)
-                {
-                    car.Distance += car.SpeedPerH / 3600m;
-                    if (car.Distance >= totalDistance)
+                    if (localSeconds.Value != 0 && localSeconds.Value % 30 == 0)
                     {
-                        lock (lockObject3)
+                        stopDuration.Value = Obstacle(car);
+                    }
+
+                    if (stopDuration.Value == 0)
+                    {
+                        car.Distance += car.SpeedPerH / 3600m;
+                        if (car.Distance >= totalDistance)
                         {
+
                             eventsCount.Value++;
                             if (finito.Values.All(x => x == false))
                             {
@@ -56,17 +52,17 @@ namespace Lab2_Threads.Functions
                                 Helpers.Print(4 + Program.carNumber + eventsCount.Values.Sum(), new string[] { $"{car.Name} har kommit i mål!" });
                             }
                             finito.Value = true;
-                        }
-                        
 
-                        break;
+
+
+                            break;
+                        }
+                    }
+                    else
+                    {
+                        stopDuration.Value--;
                     }
                 }
-                else
-                {
-                    stopDuration.Value--;
-                }
-
                 Thread.Sleep(1000);
                 localSeconds.Value++;
             }
@@ -80,39 +76,31 @@ namespace Lab2_Threads.Functions
             Random r = new Random();
             randomNumber.Value = r.Next(0, 50);
 
-            lock (lockObject2)
+            if (randomNumber.Value < 1)
             {
-                if (randomNumber.Value < 1)
-                {
-                    obstacle.Value = $"[{localSeconds.Value}sek av tävlingen] {car.Name} har slut på bensin. Tankar 30sek.";
-                    eventsCount.Value++;
-                    stopDurationHelper.Value = 30;
-                }
-                else if (randomNumber.Value < 3)
-                {
-                    obstacle.Value = $"[{localSeconds.Value}sek av tävlingen] Fck it! {car.Name} fick punka. Däckbyte 20sek.";
-                    eventsCount.Value++;
-                    stopDurationHelper.Value = 20;
-                }
-                else if (randomNumber.Value < 8)
-                {
-                    obstacle.Value = $"[{localSeconds.Value}sek av tävlingen] {car.Name} HAR FÅGEL!!! Tvättar vindrutan i 10sek.";
-                    eventsCount.Value++;
-                    stopDurationHelper.Value = 10;
-                }
-                else if (randomNumber.Value < 18)
-                {
-                    car.SpeedPerH -= 1;
-                    obstacle.Value = $"[{localSeconds.Value}sek av tävlingen] {car.Name} fick motorfel :( Får sakta ner lite..";
-                    eventsCount.Value++;
-                }
+                obstacle.Value = $"[{localSeconds.Value}sek av tävlingen] {car.Name} har slut på bensin. Tankar 30sek.";
+                stopDurationHelper.Value = 30;
+            }
+            else if (randomNumber.Value < 3)
+            {
+                obstacle.Value = $"[{localSeconds.Value}sek av tävlingen] Fck it! {car.Name} fick punka. Däckbyte 20sek.";
+                stopDurationHelper.Value = 20;
+            }
+            else if (randomNumber.Value < 8)
+            {
+                obstacle.Value = $"[{localSeconds.Value}sek av tävlingen] {car.Name} HAR FÅGEL!!! Tvättar vindrutan i 10sek.";
+                stopDurationHelper.Value = 10;
+            }
+            else if (randomNumber.Value < 18)
+            {
+                car.SpeedPerH -= 1;
+                obstacle.Value = $"[{localSeconds.Value}sek av tävlingen] {car.Name} fick motorfel :( Får sakta ner lite..";
+            }
 
-                if (obstacle.Value != "")
-                {
-
-                    Helpers.Print(4 + Program.carNumber + eventsCount.Values.Sum(), new string[] { obstacle.Value });
-
-                }
+            if (obstacle.Value != "")
+            {
+                eventsCount.Value++;
+                Helpers.Print(4 + Program.carNumber + eventsCount.Values.Sum(), new string[] { obstacle.Value });
             }
             return stopDurationHelper.Value;
         }

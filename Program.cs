@@ -1,24 +1,20 @@
-﻿using System.Collections.Concurrent;
+﻿using Lab2_Threads.Functions;
 using Lab2_Threads.Models;
-using Lab2_Threads.Functions;
 
 namespace Lab2_Threads
 {
     public class Program
     {
-        //vid stopDuration hastighet är 0!
-
-
+        
         public static int carNumber = 0;
         public static int totalDistance = 0;
-
 
         static void Main(string[] args)
         {
             CancellationTokenSource tokenSource = new CancellationTokenSource();
             CancellationToken token = tokenSource.Token;
 
-            totalDistance = 3;
+            totalDistance = 10; // in kilometers, set distance of the race
 
             // create cars
             List<Car> carList = Helpers.CreateCars();
