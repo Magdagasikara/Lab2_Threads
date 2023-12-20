@@ -14,7 +14,7 @@ namespace Lab2_Threads
             CancellationTokenSource tokenSource = new CancellationTokenSource();
             CancellationToken token = tokenSource.Token;
 
-            totalDistance = 10; // in kilometers, set distance of the race
+            totalDistance = 3; // in kilometers, set distance of the race
 
             // create cars
             List<Car> carList = Helpers.CreateCars();
@@ -23,9 +23,9 @@ namespace Lab2_Threads
             // create and start car-threads
             List<Thread> carThreads = new List<Thread>();
             foreach (Car car in carList) carThreads.Add(new Thread(() => RaceFunctions.Race(car, totalDistance)));
-            foreach (Thread thread in carThreads) thread.Start();
             Console.Clear();
-
+            foreach (Thread thread in carThreads) thread.Start();
+            
             // universal time counter
             Thread threadT = new Thread(() => Helpers.CountTime(token));
             threadT.Start();
