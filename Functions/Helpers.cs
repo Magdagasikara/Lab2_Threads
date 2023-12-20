@@ -70,8 +70,7 @@ namespace Lab2_Threads.Functions
 
         public static void CountTime(CancellationToken token) // the general timing of the race
         {
-            Console.Clear();
-
+        
             string[] x = new string[1];
             x[0] = "Tryck Enter om du vill veta hur det går i tävlingen! ";
             Print(0, x);

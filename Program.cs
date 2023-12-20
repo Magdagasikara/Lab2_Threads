@@ -24,6 +24,7 @@ namespace Lab2_Threads
             List<Thread> carThreads = new List<Thread>();
             foreach (Car car in carList) carThreads.Add(new Thread(() => RaceFunctions.Race(car, totalDistance)));
             foreach (Thread thread in carThreads) thread.Start();
+            Console.Clear();
 
             // universal time counter
             Thread threadT = new Thread(() => Helpers.CountTime(token));
