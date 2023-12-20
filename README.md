@@ -9,8 +9,7 @@ Press Enter for race updates.
 
 Unsolved issues:
 - I didn't succeed using universal "seconds" for each car's racing. Neither with nor without help of localSeconds.Value.
-- I am actually not sure if i cancelled all threads... 
-  I wait for the racethreads to be joined and then cancel the other two so should be OK - or?
+  I should probably use an in-built timer.
 - Distance shouldn't be a car property but a ThreadLocal of the race, I  guess.
 - When getting updates on the race, cars during their stops should have speed 0 m/h, 
   now it shows their current speed during the race (when not stopped)

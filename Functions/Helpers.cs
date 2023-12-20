@@ -47,7 +47,7 @@ namespace Lab2_Threads.Functions
 
         public static void GetRaceUpdate(List<Car> carList, CancellationToken token) // info on each car position and speed
         {
-            while (true)
+            while (!token.IsCancellationRequested)
             {
                 ConsoleKeyInfo keyInfo = Console.ReadKey();
                 if (keyInfo.Key == ConsoleKey.Enter)
@@ -72,7 +72,7 @@ namespace Lab2_Threads.Functions
         {
         
             string[] x = new string[1];
-            x[0] = "Tryck Enter om du vill veta hur det går i tävlingen! ";
+            x[0] = "Tryck [Enter] om du vill veta hur det går i tävlingen!";
             Print(0, x);
             while (!token.IsCancellationRequested)
             {
@@ -83,8 +83,8 @@ namespace Lab2_Threads.Functions
                 seconds++;
 
             }
-            Print(0, new string[] { $"Tävlingen är klar efter {seconds:###0} sekunder                               " });
-            Print(1, new string[] { "                                                                              " });
+            Print(0, new string[] { $"Tävlingen är klar efter {seconds:###0} sekunder.                               " });
+            Print(1, new string[] { "Press any key to close the quit.                                                           " });
         }
     }
 }

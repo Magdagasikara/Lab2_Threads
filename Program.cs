@@ -14,7 +14,7 @@ namespace Lab2_Threads
             CancellationTokenSource tokenSource = new CancellationTokenSource();
             CancellationToken token = tokenSource.Token;
 
-            totalDistance = 3; // in kilometers, set distance of the race
+            totalDistance = 10; // in kilometers, set distance of the race
 
             // create cars
             List<Car> carList = Helpers.CreateCars();
@@ -38,6 +38,8 @@ namespace Lab2_Threads
             foreach (Thread thread in carThreads) thread.Join();
             tokenSource.Cancel();
 
+            // close down at Enter
+            Console.ReadKey();
         }
 
     }
